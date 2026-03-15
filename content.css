@@ -1,0 +1,13 @@
+/* PL↔EN Translator Extension — content styles */
+/* All UI is injected via JS with inline styles, this file is a placeholder */
+/* for future enhancements */
+
+#pl-en-translator-tooltip,
+#pl-en-translator-spinner,
+#pl-en-translator-toast {
+  /* Base reset — prevent host page styles from leaking in */
+  all: initial;
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  box-sizing: border-box !important;
+  line-height: 1.5 !important;
+}

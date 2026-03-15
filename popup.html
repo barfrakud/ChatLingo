@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 320px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d14;
+      color: #e0e0f0;
+      font-size: 13px;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #181830 0%, #12122a 100%);
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #252540;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo { font-size: 20px; }
+    .title { font-size: 14px; font-weight: 700; color: #c0a8ff; letter-spacing: .3px; }
+    .subtitle { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #252540;
+      background: #0d0d14;
+    }
+    .tab {
+      flex: 1;
+      padding: 9px 0;
+      text-align: center;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: #555;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .tab.active { color: #b09aff; border-bottom-color: #7c5cbf; }
+    .tab:hover:not(.active) { color: #888; }
+
+    /* ── Panels ── */
+    .panel { display: none; padding: 14px 16px; }
+    .panel.active { display: block; }
+
+    /* ── Form elements ── */
+    .field { margin-bottom: 13px; }
+    label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      background: #181828;
+      border: 1px solid #2a2a42;
+      border-radius: 6px;
+      color: #e0e0f0;
+      font-size: 12px;
+      font-family: inherit;
+      transition: border-color .2s;
+      outline: none;
+    }
+    input[type="password"], input[type="text"] { font-family: 'Courier New', monospace; }
+    input:focus, select:focus, textarea:focus { border-color: #7c5cbf; }
+    textarea { resize: vertical; min-height: 60px; font-family: 'Courier New', monospace; font-size: 11px; }
+
+    .hint { font-size: 10px; color: #4a4a6a; margin-top: 4px; line-height: 1.4; }
+    .hint a { color: #7c5cbf; text-decoration: none; }
+
+    /* ── Provider toggle ── */
+    .provider-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 13px;
+    }
+    .provider-btn {
+      flex: 1;
+      padding: 8px 0;
+      background: #181828;
+      border: 1px solid #2a2a42;
+      border-radius: 6px;
+      color: #666;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+    }
+    .provider-btn.active {
+      background: #2a1a4a;
+      border-color: #7c5cbf;
+      color: #c0a8ff;
+    }
+
+    /* ── Tone toggle ── */
+    .tone-toggle {
+      display: flex;
+      gap: 6px;
+    }
+    .tone-btn {
+      flex: 1;
+      padding: 7px 0;
+      background: #181828;
+      border: 1px solid #2a2a42;
+      border-radius: 6px;
+      color: #666;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+    }
+    .tone-btn.active {
+      background: #1a2a3a;
+      border-color: #4a9eff;
+      color: #9acfff;
+    }
+
+    /* ── Model list ── */
+    .model-list {
+      background: #181828;
+      border: 1px solid #2a2a42;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .model-item {
+      display: flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-bottom: 1px solid #1e1e32;
+      gap: 8px;
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .model-item:last-child { border-bottom: none; }
+    .model-item:hover { background: #1e1e38; }
+    .model-item.selected { background: #1e1a38; }
+    .model-radio {
+      width: 13px; height: 13px;
+      border: 1.5px solid #4a4a6a;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .15s;
+    }
+    .model-item.selected .model-radio { border-color: #7c5cbf; }
+    .model-radio-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #7c5cbf;
+      display: none;
+    }
+    .model-item.selected .model-radio-dot { display: block; }
+    .model-name { font-size: 12px; color: #ccc; flex: 1; }
+    .model-badge {
+      font-size: 9px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: #1a3a2a;
+      color: #4caf80;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .model-badge.expensive { background: #2a2010; color: #cfb84a; }
+
+    /* ── Custom models textarea ── */
+    .add-model-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .add-model-row input { font-family: 'Courier New', monospace; font-size: 11px; }
+    .btn-small {
+      padding: 7px 10px;
+      background: #2a1a4a;
+      border: 1px solid #7c5cbf;
+      border-radius: 6px;
+      color: #c0a8ff;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .15s;
+    }
+    .btn-small:hover { opacity: .85; }
+    .btn-danger {
+      background: #3a1a1a;
+      border-color: #7c3040;
+      color: #cf6679;
+    }
+
+    /* ── Save button ── */
+    .btn-save {
+      width: 100%;
+      padding: 10px;
+      margin-top: 14px;
+      background: linear-gradient(135deg, #7c5cbf, #5c3d9e);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn-save:hover { opacity: .9; }
+
+    .status {
+      margin-top: 8px;
+      padding: 7px 10px;
+      border-radius: 5px;
+      font-size: 11px;
+      text-align: center;
+      display: none;
+    }
+    .status.ok  { background: #1a3a2a; color: #4caf80; display: block; }
+    .status.err { background: #3a1a1a; color: #cf6679; display: block; }
+
+    /* ── Shortcuts panel ── */
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid #1a1a2a;
+    }
+    .shortcut-row:last-child { border-bottom: none; }
+    .shortcut-desc { font-size: 12px; color: #aaa; }
+    kbd {
+      background: #181828;
+      border: 1px solid #363655;
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-family: monospace;
+      color: #c0a8ff;
+    }
+
+    .divider { border: none; border-top: 1px solid #1a1a2a; margin: 12px 0; }
+
+    /* ── About panel ── */
+    .about-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; color: #888; border-bottom: 1px solid #1a1a2a; }
+    .about-row:last-child { border: none; }
+    .about-val { color: #c0a8ff; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🌐</div>
+  <div>
+    <div class="title">PL ↔ EN Translator</div>
+    <div class="subtitle">WhatsApp · Messenger · AI-powered</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="api">🔑 API</div>
+  <div class="tab" data-tab="models">🤖 Modele</div>
+  <div class="tab" data-tab="style">🎨 Styl</div>
+  <div class="tab" data-tab="keys">⌨️ Skróty</div>
+</div>
+
+<!-- Panel: API -->
+<div class="panel active" id="panel-api">
+
+  <div class="field">
+    <label>Dostawca AI</label>
+    <div class="provider-toggle">
+      <div class="provider-btn active" data-provider="anthropic">🟣 Anthropic</div>
+      <div class="provider-btn" data-provider="openai">🟢 OpenAI</div>
+    </div>
+  </div>
+
+  <div class="field" id="field-anthropic">
+    <label>Anthropic API Key</label>
+    <input type="password" id="anthropicKey" placeholder="sk-ant-api03-..." autocomplete="off">
+    <div class="hint">→ <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a></div>
+  </div>
+
+  <div class="field" id="field-openai" style="display:none">
+    <label>OpenAI API Key</label>
+    <input type="password" id="openaiKey" placeholder="sk-proj-..." autocomplete="off">
+    <div class="hint">→ <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></div>
+  </div>
+
+  <button class="btn-save" id="saveBtn">💾 Zapisz</button>
+  <div class="status" id="status"></div>
+</div>
+
+<!-- Panel: Models -->
+<div class="panel" id="panel-models">
+  <div class="field">
+    <label>Wybrany model</label>
+    <div class="model-list" id="modelList">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="field">
+    <label>Dodaj własny model</label>
+    <div class="add-model-row">
+      <input type="text" id="customModelInput" placeholder="np. gpt-4o lub claude-opus-4-6">
+      <button class="btn-small" id="addModelBtn">+ Dodaj</button>
+    </div>
+    <div class="hint" style="margin-top:6px">Wpisz dokładny identyfikator modelu. Własne modele możesz usunąć klikając × na liście.</div>
+  </div>
+</div>
+
+<!-- Panel: Style -->
+<div class="panel" id="panel-style">
+
+  <div class="field">
+    <label>Ton tłumaczenia i korekty</label>
+    <div class="tone-toggle">
+      <div class="tone-btn active" data-tone="natural">💬 Potoczny</div>
+      <div class="tone-btn" data-tone="formal">👔 Formalny</div>
+    </div>
+    <div class="hint" style="margin-top:6px">Wpływa na tłumaczenie PL→EN, EN→PL oraz korektę angielskiego tekstu.</div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="field">
+    <label>Korekta angielskiego (Alt+K)</label>
+    <div style="font-size:12px; color:#aaa; line-height:1.6">
+      Napisz wiadomość po angielsku w polu czatu, naciśnij <kbd>Alt+K</kbd>.
+      Rozszerzenie poprawi tekst i pokaże listę błędów z wyjaśnieniami po polsku.<br><br>
+      Poprawiony tekst trafi z powrotem do pola wpisywania.
+    </div>
+  </div>
+
+  <button class="btn-save" id="saveToneBtn">💾 Zapisz styl</button>
+  <div class="status" id="statusStyle"></div>
+</div>
+
+<!-- Panel: Shortcuts -->
+<div class="panel" id="panel-keys">
+  <div class="shortcut-row">
+    <span class="shortcut-desc">Tłumacz pole czatu PL → EN</span>
+    <kbd>Alt + T</kbd>
+  </div>
+  <div class="shortcut-row">
+    <span class="shortcut-desc">Tłumacz zaznaczony tekst EN → PL</span>
+    <kbd>Alt + R</kbd>
+  </div>
+  <div class="shortcut-row">
+    <span class="shortcut-desc">Popraw angielski w polu czatu</span>
+    <kbd>Alt + K</kbd>
+  </div>
+  <hr class="divider">
+  <div style="font-size:11px; color:#555; line-height:1.6">
+    Tłumaczenie EN→PL przez <strong style="color:#888">zaznaczenie tekstu</strong> i naciśnięcie Alt+R.<br>
+    Hover na wiadomości <strong style="color:#888">nie wywołuje</strong> już automatycznego tłumaczenia — oszczędzasz tokeny API.
+  </div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

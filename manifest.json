@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "PL↔EN Translator",
+  "version": "1.0",
+  "description": "Tłumaczy PL→EN w polu wpisywania oraz EN→PL dla wiadomości przychodzących (WhatsApp, Messenger)",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus",
+    "https://api.anthropic.com/*"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icons/icon48.png"
+    },
+    "default_title": "Translate PL↔EN"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*",
+        "https://www.messenger.com/*",
+        "https://www.facebook.com/messages/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "translate-input": {
+      "suggested_key": {
+        "default": "Alt+T"
+      },
+      "description": "Przetłumacz tekst w polu wpisywania PL→EN"
+    }
+  },
+  "icons": {
+    "48": "icons/icon48.png"
+  }
+}
