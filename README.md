@@ -1,6 +1,6 @@
 # ChatLingo — Firefox Extension
 
-Inteligentny asystent do komunikacji w czacie, który tłumaczy wiadomości między polskim a angielskim oraz pomaga pisać poprawnie po angielsku. Działa na **WhatsApp Web** i **Messengerze**, używa modeli AI od **Anthropic** lub **OpenAI**. Do działania potrzebuje klucza API od jednego z tych dostawców.
+Inteligentny asystent do komunikacji w czacie, który tłumaczy wiadomości między polskim, angielskim amerykańskim, angielskim brytyjskim i duńskim oraz pomaga pisać poprawnie w języku docelowym. Działa na **WhatsApp Web** i **Messengerze**, używa modeli AI od **Anthropic** lub **OpenAI**. Do działania potrzebuje klucza API od jednego z tych dostawców.
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Firefox](https://img.shields.io/badge/browser-Firefox-orange.svg)
@@ -10,13 +10,15 @@ Inteligentny asystent do komunikacji w czacie, który tłumaczy wiadomości mię
 
 ## Funkcje
 
-- **Alt+T** — tłumacz tekst w polu czatu PL → EN
-- **Alt+R** — tłumacz zaznaczony tekst EN → PL (dymek nad zaznaczeniem)
-- **Alt+K** — popraw angielski w polu czatu + panel błędów z wyjaśnieniami po polsku
+- **Alt+T** — tłumacz tekst w polu czatu według wybranego języka źródłowego i docelowego
+- **Hover myszką** — tłumacz tekst pod kursorem w dymku
+- **Alt+R** — tłumacz zaznaczony tekst jako fallback
+- **Alt+K** — popraw tekst w języku docelowym + panel błędów z wyjaśnieniami po polsku
 - Obsługa **Anthropic** (Claude) i **OpenAI** (GPT) — własny klucz API
 - Wybór modelu z listy lub dodanie własnego po identyfikatorze
+- Wybór języka źródłowego i docelowego: **PL**, **EN-US**, **EN-GB**, **DA**
 - Ton tłumaczenia: **potoczny** lub **formalny**
-- Tłumaczenie EN→PL tylko na żądanie (zaznaczenie + skrót) — zero zbędnych wywołań API
+- Tłumaczenie po najechaniu kursorem na tekst oraz przez zaznaczenie + skrót jako fallback
 
 ---
 
@@ -67,10 +69,13 @@ Możesz dodać dowolny model wpisując jego dokładny identyfikator (np. `gpt-4o
 
 ### 🎨 Styl
 
-- **Potoczny** — naturalny, swobodny język codziennych rozmów
-- **Formalny** — profesjonalny, biznesowy rejestr
+| Ustawienie | Opis |
+|------------|------|
+| Ton | **Potoczny** — naturalny, swobodny język codziennych rozmów; **Formalny** — profesjonalny, biznesowy rejestr |
+| Język źródłowy | Język w którym piszesz (PL, EN-US, EN-GB, DA) |
+| Język docelowy | Język na który tłumaczysz (EN-US, EN-GB, DA, PL) |
 
-Ton wpływa na tłumaczenie i korektę angielskiego.
+Ton wpływa na tłumaczenie i korektę tekstu w wybranym języku docelowym.
 
 ---
 
@@ -78,9 +83,11 @@ Ton wpływa na tłumaczenie i korektę angielskiego.
 
 | Skrót | Akcja |
 |-------|-------|
-| `Alt + T` | Tłumacz pole czatu PL → EN |
-| `Alt + R` | Tłumacz zaznaczony tekst EN → PL |
-| `Alt + K` | Popraw angielski + panel błędów |
+| `Alt + T` | Tłumacz pole czatu |
+| `Alt + R` | Tłumacz zaznaczony tekst (fallback) |
+| `Alt + K` | Popraw tekst + panel błędów |
+
+Najedź kursorem na tekst wiadomości, aby zobaczyć tłumaczenie w dymku bez zaznaczania.
 
 ---
 
@@ -151,14 +158,17 @@ translator-extension/
 ### Panel ustawień — zakładka Styl
 ![Panel Styl](screenshots/panel-styl.png)
 
-### Tłumaczenie PL → EN (Alt+T)
-![Tłumaczenie PL→EN](screenshots/tlumaczenie-pl-en.png)
+### Wybór języka źródłowego i docelowego
+![Wybór języka](screenshots/wybor-jezyka.png)
 
-### Tłumaczenie zaznaczonego tekstu EN → PL (Alt+R)
-![Tłumaczenie EN→PL](screenshots/tlumaczenie-en-pl.png)
+### Tłumaczenie w polu czatu (Alt+T)
+![Tłumaczenie](screenshots/tlumaczenie-pl-en.png)
 
-### Korekta angielskiego z panelem błędów (Alt+K)
-![Korekta angielskiego](screenshots/korekta-angielski.png)
+### Tłumaczenie tekstu po najechaniu kursorem
+![Tłumaczenie po hoverze](screenshots/tlumaczenie-en-pl.png)
+
+### Korekta tekstu z panelem błędów (Alt+K)
+![Korekta tekstu](screenshots/korekta-angielski.png)
 
 ---
 

@@ -13,12 +13,29 @@ const DEFAULT_MODELS = {
   ]
 };
 
+const DEFAULT_SOURCE_LANG = 'pl';
+const DEFAULT_TARGET_LANG = 'en-us';
+const DEFAULT_TARGET_BY_SOURCE = {
+  pl: 'en-us',
+  'en-us': 'pl',
+  'en-gb': 'pl',
+  da: 'pl'
+};
+const DEFAULT_SOURCE_BY_TARGET = {
+  pl: 'en-us',
+  'en-us': 'pl',
+  'en-gb': 'pl',
+  da: 'pl'
+};
+
 let state = {
   provider: 'anthropic',
   anthropicKey: '',
   openaiKey: '',
   model: 'claude-haiku-4-5-20251001',
   tone: 'natural',
+  sourceLang: DEFAULT_SOURCE_LANG,
+  targetLang: DEFAULT_TARGET_LANG,
   customModels: []   // [{provider, id, label}]
 };
 
@@ -26,14 +43,17 @@ let state = {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const saved = await browser.storage.local.get([
-    'provider', 'anthropicKey', 'openaiKey', 'model', 'tone', 'customModels'
+    'provider', 'anthropicKey', 'openaiKey', 'model', 'tone', 'sourceLang', 'targetLang', 'customModels'
   ]);
   if (saved.provider)      state.provider      = saved.provider;
   if (saved.anthropicKey)  state.anthropicKey  = saved.anthropicKey;
   if (saved.openaiKey)     state.openaiKey     = saved.openaiKey;
   if (saved.model)         state.model         = saved.model;
   if (saved.tone)          state.tone          = saved.tone;
+  if (saved.sourceLang)    state.sourceLang    = saved.sourceLang;
+  if (saved.targetLang)    state.targetLang    = saved.targetLang;
   if (saved.customModels)  state.customModels  = saved.customModels;
+  ensureDistinctLanguages('source');
 
   applyStateToUI();
   bindEvents();
@@ -53,6 +73,8 @@ function applyStateToUI() {
   document.querySelectorAll('.tone-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tone === state.tone);
   });
+  document.getElementById('sourceLang').value = state.sourceLang;
+  document.getElementById('targetLang').value = state.targetLang;
   // Model list
   renderModelList();
 }
@@ -92,13 +114,29 @@ function bindEvents() {
     });
   });
 
+  document.getElementById('sourceLang').addEventListener('change', (e) => {
+    state.sourceLang = e.target.value;
+    ensureDistinctLanguages('source');
+    applyStateToUI();
+  });
+
+  document.getElementById('targetLang').addEventListener('change', (e) => {
+    state.targetLang = e.target.value;
+    ensureDistinctLanguages('target');
+    applyStateToUI();
+  });
+
   // Save API
   document.getElementById('saveBtn').addEventListener('click', saveAll);
 
   // Save tone (same storage, just different button)
   document.getElementById('saveToneBtn').addEventListener('click', async () => {
-    await browser.storage.local.set({ tone: state.tone });
-    showStatus('statusStyle', '✓ Styl zapisany', 'ok');
+    await browser.storage.local.set({
+      tone: state.tone,
+      sourceLang: state.sourceLang,
+      targetLang: state.targetLang
+    });
+    showStatus('statusStyle', '✓ Styl i języki zapisane', 'ok');
   });
 
   // Add custom model
@@ -175,6 +213,28 @@ function addCustomModel() {
   renderModelList();
 }
 
+function ensureDistinctLanguages(changedField) {
+  if (state.sourceLang !== state.targetLang) return;
+
+  if (changedField === 'target') {
+    state.sourceLang = getFallbackSourceLang(state.targetLang);
+  } else {
+    state.targetLang = getFallbackTargetLang(state.sourceLang);
+  }
+}
+
+function getFallbackTargetLang(sourceLang) {
+  const preferred = DEFAULT_TARGET_BY_SOURCE[sourceLang];
+  if (preferred && preferred !== sourceLang) return preferred;
+  return ['en-us', 'en-gb', 'da', 'pl'].find(code => code !== sourceLang) || DEFAULT_TARGET_LANG;
+}
+
+function getFallbackSourceLang(targetLang) {
+  const preferred = DEFAULT_SOURCE_BY_TARGET[targetLang];
+  if (preferred && preferred !== targetLang) return preferred;
+  return ['pl', 'en-us', 'en-gb', 'da'].find(code => code !== targetLang) || DEFAULT_SOURCE_LANG;
+}
+
 // ── Save ──────────────────────────────────────────────────────────────────────
 
 async function saveAll() {
@@ -209,6 +269,8 @@ async function saveAll() {
     openaiKey:    state.openaiKey,
     model:        state.model,
     tone:         state.tone,
+    sourceLang:   state.sourceLang,
+    targetLang:   state.targetLang,
     customModels: state.customModels,
   });
 

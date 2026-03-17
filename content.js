@@ -1,7 +1,8 @@
 // content.js — WhatsApp Web & Messenger
-// Alt+T → tłumacz pole czatu PL→EN
-// Alt+R → tłumacz zaznaczony tekst EN→PL (dymek)
-// Alt+K → popraw angielski w polu czatu + panel błędów
+// Alt+T → tłumacz pole czatu według wybranych języków
+// Hover → tłumacz tekst pod kursorem (dymek)
+// Alt+R → tłumacz zaznaczony tekst (fallback)
+// Alt+K → popraw tekst w języku docelowym + panel błędów
 
 (function () {
   'use strict';
@@ -74,7 +75,194 @@
     if (msg.type === 'TRANSLATE_INPUT_FIELD') handleTranslateInput();
   });
 
-  // ── Alt+T: translate input PL→EN ────────────────────────────────────────────
+  // ── Hover translation ───────────────────────────────────────────────────────
+
+  const HOVER_TRANSLATE_DELAY_MS = 550;
+  const HOVER_MAX_TEXT_LENGTH = 280;
+  const hoverCache = new Map();
+  let hoverTimer = null;
+  let hoverRequestSeq = 0;
+  let hoverCandidateKey = '';
+  let hoverActiveKey = '';
+
+  document.addEventListener('mousemove', handleHoverMove, true);
+  document.addEventListener('mouseleave', resetHoverTranslation, true);
+  document.addEventListener('scroll', resetHoverTranslation, true);
+
+  function handleHoverMove(e) {
+    const candidate = getHoverCandidate(e);
+
+    if (!candidate) {
+      clearHoverIntent();
+      if (bubbleMode === 'hover') hideBubble();
+      hoverActiveKey = '';
+      return;
+    }
+
+    if (candidate.cacheKey === hoverCandidateKey || candidate.cacheKey === hoverActiveKey) {
+      return;
+    }
+
+    clearHoverIntent();
+    hoverCandidateKey = candidate.cacheKey;
+    const requestSeq = ++hoverRequestSeq;
+    hoverTimer = setTimeout(() => {
+      translateHoverCandidate(candidate, requestSeq);
+    }, HOVER_TRANSLATE_DELAY_MS);
+  }
+
+  async function translateHoverCandidate(candidate, requestSeq) {
+    const langCfg = await getStoredLangConfig();
+    const cacheKey = `${langCfg.sourceLang}|${langCfg.targetLang}|${candidate.text}`;
+    hoverCandidateKey = cacheKey;
+
+    if (hoverCache.has(cacheKey)) {
+      const cached = hoverCache.get(cacheKey);
+      hoverActiveKey = cacheKey;
+      showBubble(`🌐 ${cached.langPairLabel}`, cached.translated, candidate.x, candidate.y, false, 'hover');
+      return;
+    }
+
+    showBubble(`🌐 ${formatLangPairLabel(langCfg.targetLang, langCfg.sourceLang)}`, 'Tłumaczę…', candidate.x, candidate.y, true, 'hover');
+    const result = await browser.runtime.sendMessage({ type: 'TRANSLATE', text: candidate.text, reverse: true });
+
+    if (requestSeq !== hoverRequestSeq) return;
+
+    if (result.error) {
+      hoverActiveKey = '';
+      hideBubble();
+      toast(result.error, 'error');
+      return;
+    }
+
+    const payload = {
+      translated: result.translated,
+      langPairLabel: result.langPairLabel || formatLangPairLabel(langCfg.targetLang, langCfg.sourceLang)
+    };
+
+    rememberHoverTranslation(cacheKey, payload);
+    hoverActiveKey = cacheKey;
+    showBubble(`🌐 ${payload.langPairLabel}`, payload.translated, candidate.x, candidate.y, false, 'hover');
+  }
+
+  function getHoverCandidate(e) {
+    if (window.getSelection()?.toString().trim()) return null;
+
+    const target = e.target;
+    if (!(target instanceof Element)) return null;
+    if (isIgnoredHoverElement(target)) return null;
+
+    const text = getHoverTextAtPoint(e.clientX, e.clientY, target);
+    if (!text || text.length < 2 || text.length > HOVER_MAX_TEXT_LENGTH) return null;
+
+    const langCfg = getCachedLangConfig();
+    return {
+      text,
+      x: e.clientX,
+      y: e.clientY,
+      cacheKey: `${langCfg.sourceLang}|${langCfg.targetLang}|${text}`
+    };
+  }
+
+  function isIgnoredHoverElement(el) {
+    return !!el.closest('#plt-bubble, #plt-proof-panel, #plt-spinner, #plt-toast, [contenteditable="true"], input, textarea, button, a, nav, header, [role="button"]');
+  }
+
+  function getHoverTextAtPoint(x, y, fallbackTarget) {
+    const texts = [];
+    const pointNode = getNodeAtPoint(x, y);
+
+    if (pointNode?.nodeType === Node.TEXT_NODE) {
+      const directText = normalizeHoverText(pointNode.textContent);
+      if (isTimestampLike(directText)) return '';
+      if (isViableHoverText(directText)) texts.push(directText);
+    }
+
+    let el = pointNode?.nodeType === Node.ELEMENT_NODE
+      ? pointNode
+      : pointNode?.parentElement || fallbackTarget;
+
+    const pointedElementText = normalizeHoverText(el?.textContent || '');
+    if (isTimestampLike(pointedElementText)) return '';
+
+    while (el && el !== document.body) {
+      if (isIgnoredHoverElement(el)) return pickBestHoverText(texts);
+      const text = normalizeHoverText(el.innerText || el.textContent);
+      if (isViableHoverText(text)) {
+        texts.push(text);
+        break;
+      }
+      el = el.parentElement;
+    }
+
+    return pickBestHoverText(texts);
+  }
+
+  function getNodeAtPoint(x, y) {
+    if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      return pos?.offsetNode || null;
+    }
+    if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(x, y);
+      return range?.startContainer || null;
+    }
+    return null;
+  }
+
+  function normalizeHoverText(text) {
+    return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function isViableHoverText(text) {
+    if (!text || text.length < 2 || text.length > HOVER_MAX_TEXT_LENGTH) return false;
+    if (isTimestampLike(text)) return false;
+    if (!/[A-Za-zÀ-ÖØ-öø-ÿĀ-ž]/.test(text)) return false;
+    return true;
+  }
+
+  function isTimestampLike(text) {
+    const value = String(text || '').trim();
+    return /^(\[?\d{1,2}[:.]\d{2}\]?)(\s?(am|pm))?$/i.test(value) ||
+      /^\d{1,2}[:.]\d{2}\s?[-–]\s?\d{1,2}[:.]\d{2}$/i.test(value) ||
+      /^\d{1,2}\s?(min|mins|m|godz|h|hr|hrs)$/i.test(value);
+  }
+
+  function pickBestHoverText(texts) {
+    return texts
+      .filter(Boolean)
+      .sort((a, b) => scoreHoverText(b) - scoreHoverText(a))[0] || '';
+  }
+
+  function scoreHoverText(text) {
+    const letters = (text.match(/[A-Za-zÀ-ÖØ-öø-ÿĀ-ž]/g) || []).length;
+    const words = text.split(/\s+/).filter(Boolean).length;
+    const punctuation = /[?!.,]/.test(text) ? 4 : 0;
+    const longEnough = text.length >= 12 ? 3 : 0;
+    return letters + words * 2 + punctuation + longEnough;
+  }
+
+  function clearHoverIntent() {
+    clearTimeout(hoverTimer);
+    hoverTimer = null;
+    hoverCandidateKey = '';
+    hoverRequestSeq += 1;
+  }
+
+  function resetHoverTranslation() {
+    clearHoverIntent();
+    hoverActiveKey = '';
+    if (bubbleMode === 'hover') hideBubble();
+  }
+
+  function rememberHoverTranslation(key, value) {
+    hoverCache.set(key, value);
+    if (hoverCache.size <= 100) return;
+    const firstKey = hoverCache.keys().next().value;
+    if (firstKey) hoverCache.delete(firstKey);
+  }
+
+  // ── Alt+T: translate input using configured languages ──────────────────────
 
   async function handleTranslateInput() {
     const inputObj = getActiveInputBox();
@@ -84,37 +272,38 @@
     const text = getInputText(inputObj);
     if (!text) { toast('Pole czatu jest puste', 'warn'); return; }
 
-    showSpinner(inputObj.el, '⏳ Tłumaczę PL → EN…');
-    const result = await browser.runtime.sendMessage({ type: 'TRANSLATE', text, direction: 'PL_TO_EN' });
+    showSpinner(inputObj.el, '⏳ Tłumaczę…');
+    const result = await browser.runtime.sendMessage({ type: 'TRANSLATE', text });
     hideSpinner();
 
     if (result.error) { toast(result.error, 'error'); return; }
     setInputText(inputObj, result.translated);
-    toast('✓ PL → EN', 'success');
+    toast('✓ Przetłumaczono', 'success');
   }
 
-  // ── Alt+R: translate selection EN→PL ────────────────────────────────────────
+  // ── Alt+R: translate selection using configured languages ──────────────────
 
   async function handleTranslateSelection() {
     const sel  = window.getSelection();
     const text = sel?.toString().trim();
     if (!text || text.length < 2) {
-      toast('Zaznacz angielski tekst i naciśnij Alt+R', 'warn'); return;
+      toast('Zaznacz tekst i naciśnij Alt+R', 'warn'); return;
     }
 
     let x = window.innerWidth / 2, y = window.innerHeight / 2;
     try { const r = sel.getRangeAt(0).getBoundingClientRect(); x = r.left; y = r.top; } catch (_) {}
 
-    showBubble('🌐 EN → PL', 'Tłumaczę…', x, y, true);
-    const result = await browser.runtime.sendMessage({ type: 'TRANSLATE', text, direction: 'EN_TO_PL' });
+    const initialLabel = await getStoredLangPairLabel(true);
+    showBubble(`🌐 ${initialLabel}`, 'Tłumaczę…', x, y, true, 'manual');
+    const result = await browser.runtime.sendMessage({ type: 'TRANSLATE', text, reverse: true });
 
     if (result.error) { hideBubble(); toast(result.error, 'error'); return; }
-    showBubble('🌐 EN → PL', result.translated, x, y, false);
+    showBubble(`🌐 ${result.langPairLabel || initialLabel}`, result.translated, x, y, false, 'manual');
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(hideBubble, 8000);
   }
 
-  // ── Alt+K: proofread English in input ───────────────────────────────────────
+  // ── Alt+K: proofread text in the configured target language ────────────────
 
   async function handleProofread() {
     const inputObj = getActiveInputBox();
@@ -122,7 +311,7 @@
     const text = getInputText(inputObj);
     if (!text) { toast('Pole czatu jest puste', 'warn'); return; }
 
-    showSpinner(inputObj.el, '🔍 Sprawdzam angielski…');
+    showSpinner(inputObj.el, '🔍 Sprawdzam tekst…');
     const result = await browser.runtime.sendMessage({ type: 'PROOFREAD', text });
     hideSpinner();
 
@@ -146,7 +335,7 @@
 
   // ── Translation bubble (tooltip) ────────────────────────────────────────────
 
-  let bubbleEl = null, bubbleTimer = null;
+  let bubbleEl = null, bubbleTimer = null, bubbleMode = 'manual';
 
   function createBubble() {
     if (bubbleEl) return bubbleEl;
@@ -168,8 +357,9 @@
     return bubbleEl;
   }
 
-  function showBubble(label, text, x, y, loading) {
+  function showBubble(label, text, x, y, loading, mode = 'manual') {
     const el = createBubble();
+    bubbleMode = mode;
     el.innerHTML =
       `<div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#7c5cbf;margin-bottom:5px">${esc(label)}</div>` +
       `<div style="color:${loading?'#666':'#e0e0f0'}">${esc(text)}</div>`;
@@ -184,6 +374,7 @@
 
   function hideBubble() {
     if (!bubbleEl) return;
+    bubbleMode = 'manual';
     bubbleEl.style.opacity = '0';
     setTimeout(() => { if (bubbleEl) bubbleEl.style.display = 'none'; }, 160);
   }
@@ -191,6 +382,7 @@
   // Close bubble on outside click
   document.addEventListener('mousedown', () => {
     clearTimeout(bubbleTimer);
+    resetHoverTranslation();
     hideBubble();
   }, true);
 
@@ -235,7 +427,7 @@
       background: '#181828',
     });
     header.innerHTML =
-      `<span style="font-size:12px;font-weight:700;color:#c0a8ff">🔍 Korekta angielskiego</span>` +
+      `<span style="font-size:12px;font-weight:700;color:#c0a8ff">🔍 Korekta tekstu</span>` +
       `<span id="plt-proof-close" style="cursor:pointer;color:#666;font-size:16px;line-height:1;padding:0 4px">×</span>`;
     panel.appendChild(header);
 
@@ -363,6 +555,39 @@
     return String(s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  let cachedLangConfig = { sourceLang: 'pl', targetLang: 'en-us' };
+  getStoredLangConfig();
+
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (changes.sourceLang?.newValue) cachedLangConfig.sourceLang = changes.sourceLang.newValue;
+    if (changes.targetLang?.newValue) cachedLangConfig.targetLang = changes.targetLang.newValue;
+  });
+
+  async function getStoredLangPairLabel(reverse = false) {
+    const cfg = await getStoredLangConfig();
+    return reverse
+      ? formatLangPairLabel(cfg.targetLang, cfg.sourceLang)
+      : formatLangPairLabel(cfg.sourceLang, cfg.targetLang);
+  }
+
+  async function getStoredLangConfig() {
+    const cfg = await browser.storage.local.get(['sourceLang', 'targetLang']);
+    cachedLangConfig = {
+      sourceLang: cfg.sourceLang || 'pl',
+      targetLang: cfg.targetLang || 'en-us'
+    };
+    return cachedLangConfig;
+  }
+
+  function getCachedLangConfig() {
+    return cachedLangConfig;
+  }
+
+  function formatLangPairLabel(sourceLang, targetLang) {
+    return `${String(sourceLang).toUpperCase()} → ${String(targetLang).toUpperCase()}`;
   }
 
 })();

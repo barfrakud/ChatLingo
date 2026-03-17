@@ -5,14 +5,34 @@ browser.runtime.onMessage.addListener((message) => {
   if (message.type === 'PROOFREAD')   return handleRequest(message);
 });
 
+function getLangName(code) {
+  return {
+    pl: 'Polish',
+    'en-us': 'American English',
+    'en-gb': 'British English',
+    da: 'Danish'
+  }[code] || 'English';
+}
+
+function getLangCodeLabel(code) {
+  return String(code || '').toUpperCase();
+}
+
 async function handleRequest(message) {
   const cfg = await browser.storage.local.get([
-    'provider', 'anthropicKey', 'openaiKey', 'model', 'tone'
+    'provider', 'anthropicKey', 'openaiKey', 'model', 'tone', 'sourceLang', 'targetLang'
   ]);
 
-  const provider = cfg.provider || 'anthropic';
-  const tone     = cfg.tone     || 'natural';
-  const apiKey   = provider === 'openai' ? cfg.openaiKey : cfg.anthropicKey;
+  const provider       = cfg.provider || 'anthropic';
+  const tone           = cfg.tone || 'natural';
+  const configuredSourceLang = cfg.sourceLang || 'pl';
+  const configuredTargetLang = cfg.targetLang || 'en-us';
+  const isReverseTranslation = message.type === 'TRANSLATE' && !!message.reverse;
+  const sourceLang     = isReverseTranslation ? configuredTargetLang : configuredSourceLang;
+  const targetLang     = isReverseTranslation ? configuredSourceLang : configuredTargetLang;
+  const sourceLangName = getLangName(sourceLang);
+  const targetLangName = getLangName(targetLang);
+  const apiKey         = provider === 'openai' ? cfg.openaiKey : cfg.anthropicKey;
 
   if (!apiKey) {
     return { error: 'Brak klucza API. Otwórz ustawienia rozszerzenia i wpisz klucz.' };
@@ -24,16 +44,20 @@ async function handleRequest(message) {
 
   let systemPrompt, userPrompt;
 
-  if (message.type === 'TRANSLATE' && message.direction === 'PL_TO_EN') {
-    systemPrompt = `You are a translator. Translate Polish to English using ${toneDesc}. Output ONLY the translation — no explanations, no labels, no quotes.`;
-    userPrompt   = message.text;
+  if (message.type === 'TRANSLATE') {
+    systemPrompt = `You are a translator. Translate ${sourceLangName} to ${targetLangName} using ${toneDesc}.
 
-  } else if (message.type === 'TRANSLATE' && message.direction === 'EN_TO_PL') {
-    systemPrompt = `You are a translator. Translate English to Polish using ${toneDesc}. Output ONLY the translation — no explanations, no labels, no quotes.`;
-    userPrompt   = message.text;
+Your task is translation only.
+- Output ONLY the translation in ${targetLangName}
+- Do NOT answer the message
+- Do NOT continue the conversation
+- Do NOT explain, summarize, comment, label, or add quotes
+- If the input is a question, translate the question exactly as a question
+- Preserve meaning, tone, punctuation, and intent faithfully`;
+    userPrompt   = `Translate exactly this text and nothing else:\n<<<TEXT>>>\n${message.text}\n<<<END TEXT>>>`;
 
   } else if (message.type === 'PROOFREAD') {
-    systemPrompt = `You are an English language coach. The user writes in English and wants help improving their message.
+    systemPrompt = `You are a ${targetLangName} language coach. The user writes in ${targetLangName} and wants help improving their message.
 Tone/register to use: ${toneDesc}.
 
 Respond in this exact JSON format (no markdown, no extra text):
@@ -47,16 +71,34 @@ Respond in this exact JSON format (no markdown, no extra text):
 
 If the text is already correct, set hasErrors to false and corrections to [].`;
     userPrompt = message.text;
+  } else {
+    return { error: 'Nieobsługiwany typ żądania.' };
   }
 
   const model = cfg.model || (provider === 'openai' ? 'gpt-4o-mini' : 'claude-haiku-4-5-20251001');
 
   try {
-    if (provider === 'anthropic') {
-      return await callAnthropic(apiKey, model, systemPrompt, userPrompt);
-    } else {
-      return await callOpenAI(apiKey, model, systemPrompt, userPrompt);
+    if (message.type === 'TRANSLATE' && sourceLang === targetLang) {
+      return {
+        translated: message.text,
+        langPairLabel: `${getLangCodeLabel(sourceLang)} → ${getLangCodeLabel(targetLang)}`
+      };
     }
+
+    let result;
+    if (provider === 'anthropic') {
+      result = await callAnthropic(apiKey, model, systemPrompt, userPrompt);
+    } else {
+      result = await callOpenAI(apiKey, model, systemPrompt, userPrompt);
+    }
+
+    if (message.type === 'TRANSLATE' && !result.error) {
+      return {
+        ...result,
+        langPairLabel: `${getLangCodeLabel(sourceLang)} → ${getLangCodeLabel(targetLang)}`
+      };
+    }
+    return result;
   } catch (e) {
     return { error: `Błąd połączenia: ${e.message}` };
   }

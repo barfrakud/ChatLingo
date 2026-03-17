@@ -264,7 +264,7 @@
 <div class="header">
   <div class="logo">🌐</div>
   <div>
-    <div class="title">PL ↔ EN Translator</div>
+    <div class="title">ChatLingo</div>
     <div class="subtitle">WhatsApp · Messenger · AI-powered</div>
   </div>
 </div>
@@ -334,15 +334,36 @@
       <div class="tone-btn active" data-tone="natural">💬 Potoczny</div>
       <div class="tone-btn" data-tone="formal">👔 Formalny</div>
     </div>
-    <div class="hint" style="margin-top:6px">Wpływa na tłumaczenie PL→EN, EN→PL oraz korektę angielskiego tekstu.</div>
+    <div class="hint" style="margin-top:6px">Wpływa na tłumaczenie i korektę tekstu w wybranym języku docelowym.</div>
+  </div>
+
+  <div class="field">
+    <label>Język źródłowy</label>
+    <select id="sourceLang">
+      <option value="pl">Polski (PL)</option>
+      <option value="en-us">Angielski amerykański (EN-US)</option>
+      <option value="en-gb">Angielski brytyjski (EN-GB)</option>
+      <option value="da">Duński (DA)</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Język docelowy</label>
+    <select id="targetLang">
+      <option value="en-us">Angielski amerykański (EN-US)</option>
+      <option value="en-gb">Angielski brytyjski (EN-GB)</option>
+      <option value="da">Duński (DA)</option>
+      <option value="pl">Polski (PL)</option>
+    </select>
+    <div class="hint" style="margin-top:6px">Jeśli wybierzesz ten sam język po obu stronach, drugi zostanie automatycznie zmieniony.</div>
   </div>
 
   <hr class="divider">
 
   <div class="field">
-    <label>Korekta angielskiego (Alt+K)</label>
+    <label>Korekta tekstu (Alt+K)</label>
     <div style="font-size:12px; color:#aaa; line-height:1.6">
-      Napisz wiadomość po angielsku w polu czatu, naciśnij <kbd>Alt+K</kbd>.
+      Napisz wiadomość w języku docelowym w polu czatu, naciśnij <kbd>Alt+K</kbd>.
       Rozszerzenie poprawi tekst i pokaże listę błędów z wyjaśnieniami po polsku.<br><br>
       Poprawiony tekst trafi z powrotem do pola wpisywania.
     </div>
@@ -355,21 +376,21 @@
 <!-- Panel: Shortcuts -->
 <div class="panel" id="panel-keys">
   <div class="shortcut-row">
-    <span class="shortcut-desc">Tłumacz pole czatu PL → EN</span>
+    <span class="shortcut-desc">Tłumacz pole czatu</span>
     <kbd>Alt + T</kbd>
   </div>
   <div class="shortcut-row">
-    <span class="shortcut-desc">Tłumacz zaznaczony tekst EN → PL</span>
+    <span class="shortcut-desc">Tłumacz zaznaczony tekst</span>
     <kbd>Alt + R</kbd>
   </div>
   <div class="shortcut-row">
-    <span class="shortcut-desc">Popraw angielski w polu czatu</span>
+    <span class="shortcut-desc">Popraw tekst w polu czatu</span>
     <kbd>Alt + K</kbd>
   </div>
   <hr class="divider">
   <div style="font-size:11px; color:#555; line-height:1.6">
-    Tłumaczenie EN→PL przez <strong style="color:#888">zaznaczenie tekstu</strong> i naciśnięcie Alt+R.<br>
-    Hover na wiadomości <strong style="color:#888">nie wywołuje</strong> już automatycznego tłumaczenia — oszczędzasz tokeny API.
+    Najedź myszką na tekst, aby zobaczyć automatyczne tłumaczenie w dymku.<br>
+    Tłumaczenie działa według języka źródłowego i docelowego ustawionych w zakładce <strong style="color:#888">🎨 Styl</strong>. Alt+R zostaje jako fallback dla zaznaczonego tekstu.
   </div>
 </div>
 
