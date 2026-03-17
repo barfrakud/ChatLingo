@@ -84,6 +84,77 @@
     .hint { font-size: 10px; color: #4a4a6a; margin-top: 4px; line-height: 1.4; }
     .hint a { color: #7c5cbf; text-decoration: none; }
 
+    .quick-toggles {
+      display: grid;
+      gap: 8px;
+      margin: 14px 16px 0;
+    }
+    .toggle-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #141421;
+      border: 1px solid #252540;
+      border-radius: 8px;
+    }
+    .toggle-copy strong {
+      display: block;
+      font-size: 12px;
+      color: #ddd;
+    }
+    .toggle-copy span {
+      display: block;
+      margin-top: 2px;
+      font-size: 10px;
+      color: #666;
+      line-height: 1.4;
+    }
+    .switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background: #2a2a42;
+      border: 1px solid #3a3a55;
+      border-radius: 999px;
+      transition: background .15s, border-color .15s;
+      cursor: pointer;
+    }
+    .switch-slider::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #bbb;
+      transition: transform .15s, background .15s;
+    }
+    .switch input:checked + .switch-slider {
+      background: #2a1a4a;
+      border-color: #7c5cbf;
+    }
+    .switch input:checked + .switch-slider::after {
+      transform: translateX(18px);
+      background: #c0a8ff;
+    }
+    .switch input:disabled + .switch-slider {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
     /* ── Provider toggle ── */
     .provider-toggle {
       display: flex;
@@ -266,6 +337,30 @@
   <div>
     <div class="title">ChatLingo</div>
     <div class="subtitle">WhatsApp · Messenger · AI-powered</div>
+  </div>
+</div>
+
+<div class="quick-toggles">
+  <div class="toggle-card">
+    <div class="toggle-copy">
+      <strong>Rozszerzenie aktywne</strong>
+      <span>Globalny przełącznik wszystkich funkcji dodatku.</span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="extensionEnabled">
+      <span class="switch-slider"></span>
+    </label>
+  </div>
+
+  <div class="toggle-card">
+    <div class="toggle-copy">
+      <strong>Tłumaczenie po najechaniu</strong>
+      <span>Automatyczny dymek po zatrzymaniu kursora nad wiadomością.</span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="hoverEnabled">
+      <span class="switch-slider"></span>
+    </label>
   </div>
 </div>
 

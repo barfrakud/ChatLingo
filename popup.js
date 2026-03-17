@@ -29,6 +29,8 @@ const DEFAULT_SOURCE_BY_TARGET = {
 };
 
 let state = {
+  extensionEnabled: true,
+  hoverEnabled: true,
   provider: 'anthropic',
   anthropicKey: '',
   openaiKey: '',
@@ -43,8 +45,10 @@ let state = {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const saved = await browser.storage.local.get([
-    'provider', 'anthropicKey', 'openaiKey', 'model', 'tone', 'sourceLang', 'targetLang', 'customModels'
+    'extensionEnabled', 'hoverEnabled', 'provider', 'anthropicKey', 'openaiKey', 'model', 'tone', 'sourceLang', 'targetLang', 'customModels'
   ]);
+  if (typeof saved.extensionEnabled === 'boolean') state.extensionEnabled = saved.extensionEnabled;
+  if (typeof saved.hoverEnabled === 'boolean')     state.hoverEnabled     = saved.hoverEnabled;
   if (saved.provider)      state.provider      = saved.provider;
   if (saved.anthropicKey)  state.anthropicKey  = saved.anthropicKey;
   if (saved.openaiKey)     state.openaiKey     = saved.openaiKey;
@@ -57,9 +61,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   applyStateToUI();
   bindEvents();
+  updateExtensionBadge();
 });
 
 function applyStateToUI() {
+  document.getElementById('extensionEnabled').checked = state.extensionEnabled;
+  document.getElementById('hoverEnabled').checked = state.hoverEnabled;
+  document.getElementById('hoverEnabled').disabled = !state.extensionEnabled;
   // Provider buttons
   document.querySelectorAll('.provider-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.provider === state.provider);
@@ -82,6 +90,19 @@ function applyStateToUI() {
 // ── Events ────────────────────────────────────────────────────────────────────
 
 function bindEvents() {
+  document.getElementById('extensionEnabled').addEventListener('change', async (e) => {
+    state.extensionEnabled = e.target.checked;
+    if (!state.extensionEnabled) state.hoverEnabled = false;
+    applyStateToUI();
+    await saveToggles();
+  });
+
+  document.getElementById('hoverEnabled').addEventListener('change', async (e) => {
+    state.hoverEnabled = e.target.checked && state.extensionEnabled;
+    applyStateToUI();
+    await saveToggles();
+  });
+
   // Tabs
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -132,10 +153,13 @@ function bindEvents() {
   // Save tone (same storage, just different button)
   document.getElementById('saveToneBtn').addEventListener('click', async () => {
     await browser.storage.local.set({
+      extensionEnabled: state.extensionEnabled,
+      hoverEnabled: state.hoverEnabled,
       tone: state.tone,
       sourceLang: state.sourceLang,
       targetLang: state.targetLang
     });
+    updateExtensionBadge();
     showStatus('statusStyle', '✓ Styl i języki zapisane', 'ok');
   });
 
@@ -264,6 +288,8 @@ async function saveAll() {
   state.openaiKey    = openaiKey    || state.openaiKey;
 
   await browser.storage.local.set({
+    extensionEnabled: state.extensionEnabled,
+    hoverEnabled: state.hoverEnabled,
     provider:     state.provider,
     anthropicKey: state.anthropicKey,
     openaiKey:    state.openaiKey,
@@ -275,9 +301,34 @@ async function saveAll() {
   });
 
   showStatus('status', '✓ Zapisano!', 'ok');
+  updateExtensionBadge();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function saveToggles() {
+  await browser.storage.local.set({
+    extensionEnabled: state.extensionEnabled,
+    hoverEnabled: state.hoverEnabled
+  });
+  updateExtensionBadge();
+}
+
+function updateExtensionBadge() {
+  if (!browser?.browserAction) return;
+  if (!state.extensionEnabled) {
+    browser.browserAction.setBadgeText({ text: 'OFF' });
+    browser.browserAction.setBadgeBackgroundColor({ color: '#8b2d3b' });
+    return;
+  }
+  if (!state.hoverEnabled) {
+    browser.browserAction.setBadgeText({ text: 'MAN' });
+    browser.browserAction.setBadgeBackgroundColor({ color: '#6f5d14' });
+    return;
+  }
+  browser.browserAction.setBadgeText({ text: 'ON' });
+  browser.browserAction.setBadgeBackgroundColor({ color: '#2d6a4f' });
+}
 
 function showStatus(id, msg, type) {
   const el = document.getElementById(id);

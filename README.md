@@ -11,14 +11,16 @@ Inteligentny asystent do komunikacji w czacie, który tłumaczy wiadomości mię
 ## Funkcje
 
 - **Alt+T** — tłumacz tekst w polu czatu według wybranego języka źródłowego i docelowego
-- **Hover myszką** — tłumacz tekst pod kursorem w dymku
+- **Hover myszką** — tłumacz wiadomość rozmówcy w dymku (`język docelowy -> język źródłowy`)
 - **Alt+R** — tłumacz zaznaczony tekst jako fallback
 - **Alt+K** — popraw tekst w języku docelowym + panel błędów z wyjaśnieniami po polsku
 - Obsługa **Anthropic** (Claude) i **OpenAI** (GPT) — własny klucz API
 - Wybór modelu z listy lub dodanie własnego po identyfikatorze
 - Wybór języka źródłowego i docelowego: **PL**, **EN-US**, **EN-GB**, **DA**
+- Szybkie przełączniki: **Rozszerzenie aktywne** i **Tłumaczenie po najechaniu**
+- Badge na ikonie: **ON**, **MAN**, **OFF**
 - Ton tłumaczenia: **potoczny** lub **formalny**
-- Tłumaczenie po najechaniu kursorem na tekst oraz przez zaznaczenie + skrót jako fallback
+- Hover ignoruje znaczniki czasu i krótkie elementy UI, aby nie tłumaczyć godzin wiadomości
 
 ---
 
@@ -71,11 +73,13 @@ Możesz dodać dowolny model wpisując jego dokładny identyfikator (np. `gpt-4o
 
 | Ustawienie | Opis |
 |------------|------|
+| Rozszerzenie aktywne | Globalny przełącznik wszystkich funkcji dodatku |
+| Tłumaczenie po najechaniu | Włącza lub wyłącza automatyczne tłumaczenie wiadomości po zatrzymaniu kursora |
 | Ton | **Potoczny** — naturalny, swobodny język codziennych rozmów; **Formalny** — profesjonalny, biznesowy rejestr |
 | Język źródłowy | Język w którym piszesz (PL, EN-US, EN-GB, DA) |
 | Język docelowy | Język na który tłumaczysz (EN-US, EN-GB, DA, PL) |
 
-Ton wpływa na tłumaczenie i korektę tekstu w wybranym języku docelowym.
+Ton wpływa na tłumaczenie i korektę tekstu w wybranym języku docelowym. Hover i `Alt+R` tłumaczą w przeciwnym kierunku niż `Alt+T`, czyli z języka docelowego rozmówcy z powrotem na Twój język źródłowy.
 
 ---
 
@@ -88,6 +92,7 @@ Ton wpływa na tłumaczenie i korektę tekstu w wybranym języku docelowym.
 | `Alt + K` | Popraw tekst + panel błędów |
 
 Najedź kursorem na tekst wiadomości, aby zobaczyć tłumaczenie w dymku bez zaznaczania.
+Jeśli badge pokazuje `MAN`, działają tylko akcje ręczne (`Alt+T`, `Alt+R`, `Alt+K`), a hover jest wyłączony.
 
 ---
 

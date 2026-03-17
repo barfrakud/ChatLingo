@@ -84,12 +84,16 @@
   let hoverRequestSeq = 0;
   let hoverCandidateKey = '';
   let hoverActiveKey = '';
+  let extensionEnabled = true;
+  let hoverEnabled = true;
 
   document.addEventListener('mousemove', handleHoverMove, true);
   document.addEventListener('mouseleave', resetHoverTranslation, true);
   document.addEventListener('scroll', resetHoverTranslation, true);
 
   function handleHoverMove(e) {
+    if (!extensionEnabled || !hoverEnabled) return;
+
     const candidate = getHoverCandidate(e);
 
     if (!candidate) {
@@ -112,6 +116,8 @@
   }
 
   async function translateHoverCandidate(candidate, requestSeq) {
+    if (!extensionEnabled || !hoverEnabled) return;
+
     const langCfg = await getStoredLangConfig();
     const cacheKey = `${langCfg.sourceLang}|${langCfg.targetLang}|${candidate.text}`;
     hoverCandidateKey = cacheKey;
@@ -265,6 +271,8 @@
   // ── Alt+T: translate input using configured languages ──────────────────────
 
   async function handleTranslateInput() {
+    if (!extensionEnabled) { toast('Rozszerzenie jest wyłączone', 'warn'); return; }
+
     const inputObj = getActiveInputBox();
     if (!inputObj) {
       toast('Kliknij najpierw w pole czatu', 'warn'); return;
@@ -284,6 +292,8 @@
   // ── Alt+R: translate selection using configured languages ──────────────────
 
   async function handleTranslateSelection() {
+    if (!extensionEnabled) { toast('Rozszerzenie jest wyłączone', 'warn'); return; }
+
     const sel  = window.getSelection();
     const text = sel?.toString().trim();
     if (!text || text.length < 2) {
@@ -306,6 +316,8 @@
   // ── Alt+K: proofread text in the configured target language ────────────────
 
   async function handleProofread() {
+    if (!extensionEnabled) { toast('Rozszerzenie jest wyłączone', 'warn'); return; }
+
     const inputObj = getActiveInputBox();
     if (!inputObj) { toast('Kliknij najpierw w pole czatu', 'warn'); return; }
     const text = getInputText(inputObj);
@@ -559,9 +571,18 @@
 
   let cachedLangConfig = { sourceLang: 'pl', targetLang: 'en-us' };
   getStoredLangConfig();
+  loadFeatureToggles();
 
   browser.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
+    if (typeof changes.extensionEnabled?.newValue === 'boolean') {
+      extensionEnabled = changes.extensionEnabled.newValue;
+      if (!extensionEnabled) resetHoverTranslation();
+    }
+    if (typeof changes.hoverEnabled?.newValue === 'boolean') {
+      hoverEnabled = changes.hoverEnabled.newValue;
+      if (!hoverEnabled) resetHoverTranslation();
+    }
     if (changes.sourceLang?.newValue) cachedLangConfig.sourceLang = changes.sourceLang.newValue;
     if (changes.targetLang?.newValue) cachedLangConfig.targetLang = changes.targetLang.newValue;
   });
@@ -584,6 +605,12 @@
 
   function getCachedLangConfig() {
     return cachedLangConfig;
+  }
+
+  async function loadFeatureToggles() {
+    const cfg = await browser.storage.local.get(['extensionEnabled', 'hoverEnabled']);
+    extensionEnabled = cfg.extensionEnabled !== false;
+    hoverEnabled = cfg.hoverEnabled !== false;
   }
 
   function formatLangPairLabel(sourceLang, targetLang) {

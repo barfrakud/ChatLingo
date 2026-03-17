@@ -5,6 +5,29 @@ browser.runtime.onMessage.addListener((message) => {
   if (message.type === 'PROOFREAD')   return handleRequest(message);
 });
 
+async function updateActionBadge() {
+  if (!browser?.browserAction) return;
+
+  const cfg = await browser.storage.local.get(['extensionEnabled', 'hoverEnabled']);
+  const extensionEnabled = cfg.extensionEnabled !== false;
+  const hoverEnabled = cfg.hoverEnabled !== false;
+
+  if (!extensionEnabled) {
+    await browser.browserAction.setBadgeText({ text: 'OFF' });
+    await browser.browserAction.setBadgeBackgroundColor({ color: '#8b2d3b' });
+    return;
+  }
+
+  if (!hoverEnabled) {
+    await browser.browserAction.setBadgeText({ text: 'MAN' });
+    await browser.browserAction.setBadgeBackgroundColor({ color: '#6f5d14' });
+    return;
+  }
+
+  await browser.browserAction.setBadgeText({ text: 'ON' });
+  await browser.browserAction.setBadgeBackgroundColor({ color: '#2d6a4f' });
+}
+
 function getLangName(code) {
   return {
     pl: 'Polish',
@@ -20,9 +43,10 @@ function getLangCodeLabel(code) {
 
 async function handleRequest(message) {
   const cfg = await browser.storage.local.get([
-    'provider', 'anthropicKey', 'openaiKey', 'model', 'tone', 'sourceLang', 'targetLang'
+    'extensionEnabled', 'provider', 'anthropicKey', 'openaiKey', 'model', 'tone', 'sourceLang', 'targetLang'
   ]);
 
+  const extensionEnabled = cfg.extensionEnabled !== false;
   const provider       = cfg.provider || 'anthropic';
   const tone           = cfg.tone || 'natural';
   const configuredSourceLang = cfg.sourceLang || 'pl';
@@ -33,6 +57,10 @@ async function handleRequest(message) {
   const sourceLangName = getLangName(sourceLang);
   const targetLangName = getLangName(targetLang);
   const apiKey         = provider === 'openai' ? cfg.openaiKey : cfg.anthropicKey;
+
+  if (!extensionEnabled) {
+    return { error: 'Rozszerzenie jest wyłączone w ustawieniach popupu.' };
+  }
 
   if (!apiKey) {
     return { error: 'Brak klucza API. Otwórz ustawienia rozszerzenia i wpisz klucz.' };
@@ -173,3 +201,18 @@ browser.commands.onCommand.addListener(async (command) => {
     browser.tabs.sendMessage(tabs[0].id, { type: 'TRANSLATE_INPUT_FIELD' });
   }
 });
+
+browser.runtime.onInstalled.addListener(() => {
+  updateActionBadge();
+});
+
+browser.runtime.onStartup.addListener(() => {
+  updateActionBadge();
+});
+
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.extensionEnabled || changes.hoverEnabled) updateActionBadge();
+});
+
+updateActionBadge();
